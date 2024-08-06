@@ -4,38 +4,65 @@
 
 
 #Import section
-import logging
 import argparse
-import styles
-import ssh_connector
+import logging
+from styles import Styles
+from security_check import RemoteCheck
+
 
 #Main class
 class Linguard:
     def __init__(self):
         self.args = self.parse_arguments()
-        self.style =styles.Styles('LINGUARD')
+        self.style =Styles()
         self.run()
 
     #Argument parser
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Linguard - Security configuration analysis tool")
-        parser.add_argument('--targets', help="Path to the IP addresses list file")
+        parser.add_argument('-m','--mode',choices=['local','remote'],help='Type of scan',required=True)
         parser.add_argument('-t', '--type', choices=['config', 'privilege'], help='Type of security check to perform', required=True)
-        parser.add_argument('-o', '--output', choices=['json', 'markdown'], help="Output file format")
-        parser.add_argument('--result_path', help="Path for results file")
-        return parser.parse_args()
+        parser.add_argument('-l','--targets', help="Path to the IP addresses list file (required if mode is remote)")
+        parser.add_argument('-u','--SSHuser', help="User for connecting to remote hosts via SSH")
+        parser.add_argument('-k','--SSHkey', help="Private key file for connecting to remote hosts via SSH")
+        parser.add_argument('-o', '--output', choices=['json', 'markdown'], help="Output file format, default: format JSON")
+        parser.add_argument('-r','--result_path', help="Path for results file, default: execution path")
+        args = parser.parse_args()
+        if args.mode == "remote" and (not args.targets or not args.SSHuser or not args.SSHkey):
+            parser.error("--target, --SSHuser and --SSHkey are required if --mode is set to 'remote'")
+            parser.print_usage()
+        if args.SSHuser.lower() == 'root':
+            parser.error("SSH connection using root user is not allowed")
+            parser.print_usage()
+        return args
 
     #Main method
     def run(self):
-        self.style.ascii_banner()
+        results = []
+        self.style.ascii_banner('LINGUARD')
         self.style.color_print('version: 1.0','yellow')
-        #results = []
-        if self.args.type == 'config':
+        if self.args.mode == 'remote' and self.args.type == 'config':
             self.style.color_print('[+] Launching security check...','blue')
-            target = ssh_connector.SSHConnector('172.17.0.2','test','Test1234','/home/m0sfet/.ssh/id_rsa')
-            output=target.execute_command('ls /root')
-            self.style.color_print(f'The output of last command is:\n{output}','magenta')
-            target.close()
+            remote_check = RemoteCheck(self.args)
+            remote_check.run_checks()
+            results = remote_check.get_results()
+            for result in results:
+                self.style.color_print(f'\n[+] RESULTADOS CHECKS SEGURIDAD EN HOST: {result["ip"]}','white')
+                if result['check_res'] == 'ERROR':
+                    self.style.color_print('ERROR: Imposible ejecutar comandos de comprobacion','red')
+                    break
+                for check in result['check_res']:
+                    if check['result'] == 'fail':
+                        color = 'red'
+                    else:
+                        color ='green'
+                    self.style.color_print(f'[+] Check {check["id"]}, Descripcion: {check["description"]}. Resultado -> {check["result"]}',color)
+                    if check['result'] == 'fail':
+                        self.style.color_print(f'\t[*] Remediación sugerida: {check["remediation"]}','red')
+            #target = ssh_connector.SSHConnector('172.17.0.2','test','Test1234','/home/m0sfet/.ssh/id_rsa')
+            #output=target.execute_command('ls /root')
+            #self.style.color_print(f'The output of last command is:\n{output}','magenta')
+            #target.close()
             #sec_check = SecurityCheck(self.args.targets)
             #results = sec_check.run_checks()
         elif self.args.type == 'privilege':

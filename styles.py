@@ -6,15 +6,16 @@ from os import system
 import pyfiglet
 from colorama import Fore, Style
 
+
 #Class
 class Styles:
 
-    def __init__(self,text):
-        self.banner=text
+    def __init__(self):
+        self.font = 'slant'
 
-    def ascii_banner(self):
+    def ascii_banner(self,text):
         try:
-            banner = pyfiglet.figlet_format(self.banner)
+            banner = pyfiglet.figlet_format(text,font=self.font)
             system("clear")
             print(banner)
         except RuntimeError as e:
@@ -27,5 +28,4 @@ class Styles:
             print(Style.RESET_ALL)
         except AttributeError as e:
             print(e)
-
-
+            
