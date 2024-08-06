@@ -7,7 +7,7 @@
 import argparse
 import logging
 from styles import Styles
-from security_check import RemoteCheck
+from remote_check import RemoteCheck
 
 
 #Main class

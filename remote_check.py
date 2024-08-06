@@ -4,6 +4,7 @@
 #Import section
 import threading
 import getpass
+import re
 from styles import Styles
 from tqdm import tqdm
 from nmap_scanner import NmapScanner
@@ -24,10 +25,12 @@ class RemoteCheck:
 
     def load_targets(self):
         hosts=[]
+        ip_pattern=re.compile(r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
         with open(self.targets_path, 'r', encoding='UTF-8') as file:
             ips=file.readlines()
         for ip in ips:
-            hosts.append(ip.strip())
+            if ip_pattern.match(ip.strip()):
+                hosts.append(ip.strip())
         return hosts
 
                        
