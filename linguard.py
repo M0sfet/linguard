@@ -8,6 +8,7 @@ import argparse
 import logging
 from styles import Styles
 from remote_check import RemoteCheck
+from os import path
 
 
 #Main class
@@ -40,35 +41,47 @@ class Linguard:
     def run(self):
         results = []
         self.style.ascii_banner('LINGUARD')
-        self.style.color_print('version: 1.0','yellow')
+        self.style.color_print('version: 1.0.0','yellow')
         if self.args.mode == 'remote' and self.args.type == 'config':
             self.style.color_print('[+] Launching security check...','blue')
             remote_check = RemoteCheck(self.args)
             remote_check.run_checks()
             results = remote_check.get_results()
             for result in results:
-                self.style.color_print(f'\n[+] RESULTADOS CHECKS SEGURIDAD EN HOST: {result["ip"]}','white')
+                self.style.color_print(f'\n[+] SECURITY CHECK RESULTS: {result["ip"]}','white')
                 if result['check_res'] == 'ERROR':
-                    self.style.color_print('ERROR: Imposible ejecutar comandos de comprobacion','red')
+                    self.style.color_print('ERROR: Check commands execution failed','red')
                     break
                 for check in result['check_res']:
                     if check['result'] == 'fail':
                         color = 'red'
                     else:
                         color ='green'
-                    self.style.color_print(f'[+] Check {check["id"]}, Descripcion: {check["description"]}. Resultado -> {check["result"]}',color)
+                    self.style.color_print(f'[+] Check {check["id"]}, Description: {check["description"]}. Result -> {check["result"]}',color)
                     if check['result'] == 'fail':
-                        self.style.color_print(f'\t[*] Remediación sugerida: {check["remediation"]}','red')
-            #target = ssh_connector.SSHConnector('172.17.0.2','test','Test1234','/home/m0sfet/.ssh/id_rsa')
-            #output=target.execute_command('ls /root')
-            #self.style.color_print(f'The output of last command is:\n{output}','magenta')
-            #target.close()
-            #sec_check = SecurityCheck(self.args.targets)
-            #results = sec_check.run_checks()
-        elif self.args.type == 'privilege':
+                        self.style.color_print(f'\t[*] Remediation: {check["remediation"]}','red')
+        elif self.args.mode == 'remote' and self.args.type == 'privilege':
             self.style.color_print('[+] Launching privilege escalation check...','green')
-            #presc_check = PrivEscCheck(self.args.targets)
-            #results = presc_check.run_checks()
+            remote_check = RemoteCheck(self.args)
+            remote_check.run_checks()
+            results = remote_check.get_results()
+            for result in results:
+                self.style.color_print(f'\n[+] PRIVILEGE ESCALATION CHECK RESULTS: {result["ip"]}','white')
+                for priv_res in result['privesc_res']:
+                    if priv_res['result'] == 'fail':
+                        color = 'red'
+                    else:
+                        color ='green'
+                    self.style.color_print(f'[+] Check {priv_res["id"]}, Description: {priv_res["description"]}. Result -> {priv_res["result"]}',color)
+                    if priv_res['result'] == 'fail' and priv_res['id'] == 'setuid_check':
+                        if priv_res['details']:
+                            for setuid_file in priv_res['details']:
+                                self.style.color_print(f'\t[*] File with SETUID enabled: {setuid_file}','red')
+                                self.style.color_print(f'\t[*] You should check: https://gtfobins.github.io/gtfobins/{path.basename(setuid_file)}','red')
+                        self.style.color_print(f'\t[*] Remediation: {priv_res["remediation"]}','red')
+                    elif priv_res['id'] == 'kernel_check':
+                        self.style.color_print(f'\t[*] {priv_res["exploit_details"]}','green')
+
         #self.save_results(results)
 
     #Handle results

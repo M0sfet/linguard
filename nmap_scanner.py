@@ -24,12 +24,12 @@ class NmapScanner:
         try:
             result = subprocess.run(['nmap', '-T4', '-F', '-sV', ip], capture_output=True, text=True)
             if result.returncode != 0:
-                logging.error(f"Error ejecutando nmap para {ip}: {result.stderr}")
+                logging.error(f"Error nmap scan on host {ip}: {result.stderr}")
                 return []
             return self.parse_nmap_output(result.stdout)
         except Exception as e:
-            logging.error(f"Excepción no manejada al escanear {ip}: {e}")
-            return []
+            logging.error(f"Unhandled exception during the scan of host {ip}: {e}")
+            exit(1)
 
 
     def parse_nmap_output(self, output):

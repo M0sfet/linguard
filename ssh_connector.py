@@ -34,14 +34,15 @@ class SSHConnector:
             exit(1)
 
 
-    def execute_command(self, command):
+    def execute_command(self, command, use_sudo=False):
         try:
-            command = f'echo {self.password} | sudo -S {command}'
+            if use_sudo:
+                command = f'echo {self.password} | sudo -S {command}'
             stdin, stdout, stderr = self.client.exec_command(command)
             exit_status = stdout.channel.recv_exit_status()
-            if exit_status != 0:
+            if exit_status != 0 and 'find / -perm -4000' not in command:
                 if 'incorrect password attempt' in stderr.read().decode():
-                    print("\n[*] ERROR: Contraseña invalida")
+                    logging.error("\n[*] ERROR: Wrong password")
                     return "command_exec_error"
                 return stderr.read().decode()
             else:
