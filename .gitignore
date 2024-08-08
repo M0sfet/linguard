@@ -3,3 +3,7 @@
 /__pycache__
 targets.json
 targets.txt
+reports/08082024_results_privesc.json
+reports/08082024_results_privesc.md
+reports/08082024_results_sec.json
+reports/08082024_results_sec.md

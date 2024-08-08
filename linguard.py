@@ -6,10 +6,19 @@
 #Import section
 import argparse
 import logging
+import json
+import signal
 from styles import Styles
 from remote_check import RemoteCheck
-from os import path
+from datetime import datetime
 
+
+#Handling user press ctrl-c
+def user_abort(sig, frame):
+    print("\n\n[+] User aborted execution")
+    exit(0)
+
+signal.signal(signal.SIGINT,user_abort)
 
 #Main class
 class Linguard:
@@ -26,8 +35,8 @@ class Linguard:
         parser.add_argument('-l','--targets', help="Path to the IP addresses list file (required if mode is remote)")
         parser.add_argument('-u','--SSHuser', help="User for connecting to remote hosts via SSH")
         parser.add_argument('-k','--SSHkey', help="Private key file for connecting to remote hosts via SSH")
-        parser.add_argument('-o', '--output', choices=['json', 'markdown'], help="Output file format, default: format JSON")
-        parser.add_argument('-r','--result_path', help="Path for results file, default: execution path")
+        parser.add_argument('-o', '--output', choices=['json', 'markdown'], help="Output file format", default='json')
+        parser.add_argument('-r','--results_path', help="Path for results file, default: execution path/date_results",default=f'reports/{datetime.now().strftime("%d%m%Y")}_results')
         args = parser.parse_args()
         if args.mode == "remote" and (not args.targets or not args.SSHuser or not args.SSHkey):
             parser.error("--target, --SSHuser and --SSHkey are required if --mode is set to 'remote'")
@@ -35,54 +44,23 @@ class Linguard:
         if args.SSHuser.lower() == 'root':
             parser.error("SSH connection using root user is not allowed")
             parser.print_usage()
+        if len(args.SSHuser) > 20  or len(args.results_path) > 40:
+            parser.error("Argument too long")
+            parser.print_usage()
         return args
 
     #Main method
     def run(self):
-        results = []
         self.style.ascii_banner('LINGUARD')
         self.style.color_print('version: 1.0.0','yellow')
+        self.style.color_print('Press ctrl-c to abort execution','yellow')
         if self.args.mode == 'remote' and self.args.type == 'config':
-            self.style.color_print('[+] Launching security check...','blue')
-            remote_check = RemoteCheck(self.args)
-            remote_check.run_checks()
-            results = remote_check.get_results()
-            for result in results:
-                self.style.color_print(f'\n[+] SECURITY CHECK RESULTS: {result["ip"]}','white')
-                if result['check_res'] == 'ERROR':
-                    self.style.color_print('ERROR: Check commands execution failed','red')
-                    break
-                for check in result['check_res']:
-                    if check['result'] == 'fail':
-                        color = 'red'
-                    else:
-                        color ='green'
-                    self.style.color_print(f'[+] Check {check["id"]}, Description: {check["description"]}. Result -> {check["result"]}',color)
-                    if check['result'] == 'fail':
-                        self.style.color_print(f'\t[*] Remediation: {check["remediation"]}','red')
-        elif self.args.mode == 'remote' and self.args.type == 'privilege':
-            self.style.color_print('[+] Launching privilege escalation check...','green')
-            remote_check = RemoteCheck(self.args)
-            remote_check.run_checks()
-            results = remote_check.get_results()
-            for result in results:
-                self.style.color_print(f'\n[+] PRIVILEGE ESCALATION CHECK RESULTS: {result["ip"]}','white')
-                for priv_res in result['privesc_res']:
-                    if priv_res['result'] == 'fail':
-                        color = 'red'
-                    else:
-                        color ='green'
-                    self.style.color_print(f'[+] Check {priv_res["id"]}, Description: {priv_res["description"]}. Result -> {priv_res["result"]}',color)
-                    if priv_res['result'] == 'fail' and priv_res['id'] == 'setuid_check':
-                        if priv_res['details']:
-                            for setuid_file in priv_res['details']:
-                                self.style.color_print(f'\t[*] File with SETUID enabled: {setuid_file}','red')
-                                self.style.color_print(f'\t[*] You should check: https://gtfobins.github.io/gtfobins/{path.basename(setuid_file)}','red')
-                        self.style.color_print(f'\t[*] Remediation: {priv_res["remediation"]}','red')
-                    elif priv_res['id'] == 'kernel_check':
-                        self.style.color_print(f'\t[*] {priv_res["exploit_details"]}','green')
-
-        #self.save_results(results)
+            self.style.color_print('[+] Launching security check...','cyan')
+        if self.args.mode == 'remote' and self.args.type == 'privilege':
+            self.style.color_print('[+] Launching privilege escalation check...','cyan')
+        remote_check = RemoteCheck(self.args)
+        remote_check.run_checks()
+        self.save_results(results = remote_check.get_results())
 
     #Handle results
     def save_results(self, results):
@@ -92,16 +70,66 @@ class Linguard:
             self.save_to_markdown(results)
 
     def save_to_json(self, results):
-        import json
-        with open(self.args.results_path, 'w', encoding='UTF-8') as f:
-            json.dump(results, f, indent=4)
+        try:
+            self.style.color_print(f'\n[+] Generating result report in JSON format...','white')
+            if not self.args.results_path.endswith('.json'):
+                file_name = self.args.results_path+'_privesc.json' if self.args.type == 'privilege' else self.args.results_path+'_sec.json'
+            else:
+                file_name = self.args.results_path
+            with open(file_name, 'w', encoding='UTF-8') as f:
+                json.dump(results, f, indent=4)
+            self.style.color_print(f'\n[+] Report created succesfully, saved in : {file_name}','green')
+        except PermissionError:
+            logging.error("\n[*] ERROR: Can not write the file, review filesystem permissions")
+            exit(1)
 
     def save_to_markdown(self, results):
-        with open(self.args.results_path, 'w', encoding='UTF-8') as f:
-            f.write("# Linguard Results\n\n")
-            for result in results:
-                f.write(f"## Check ID: {result['id']}\n")
-                f.write(f"**Result:** {result['result']}\n\n")
-
+        md_content = "# LINGUARD Report.\n" 
+        md_content += f"**Date:** {datetime.now().strftime('%d%m%Y')}\n"
+        for result in results:
+            md_content += f"\n## IP: {result['ip']}\n"
+            if self.args.type == 'config':
+                md_content += f"\n**Score:** {result['score']}\n"
+            md_content += "\n### Ports and Services\n"
+            for port in result['ports']:
+                md_content += f"- **Port:** {port['port']}, **Service:** {port['service']}, **Version:** {port['version']}\n"
+            if self.args.type == 'config':
+                md_content += "\n### Security Configuration Check Results\n"
+                for check in result['check_res']:
+                    md_content += f"- **ID:** {check['id']}, **Description:** {check['description']}\n"
+                    if check['result'] == 'fail':
+                        md_content += f"  - **Remediation:** {check['remediation']}\n"
+                    md_content += f"  - **Result:** {check['result']}\n"
+            elif self.args.type == 'privilege':
+                md_content += "\n### Privilege Escalation Check Results\n"
+                for check in result['privesc_res']:
+                    md_content += f"- **ID:** {check['id']}, **Description:** {check['description']}\n"
+                    if check['result'] == 'vulnerable' and check['id'] == 'setuid_check':
+                        if check['details']:
+                            for setuid_file in check['details']:
+                                md_content += f"  - **File with SETUID enabled:**  {setuid_file}\n"
+                                if check['setuid_gtfobin']:
+                                    for url in check['setuid_gtfobin']:
+                                        md_content += f"  - **You should check:**  {url}\n"
+                    elif check['id'] == 'kernel_check':
+                        md_content += f"  - **{check['exploit_details']}**\n"
+                    elif check['id'] == 'sudo_check' and check['sudo_users']:
+                        for sudo_user in check['sudo_users']:
+                            md_content += f"  - **Unsecured sudo users:**  {sudo_user}\n"
+                        md_content += f"  - **Remediation:** {check['remediation']}\n"
+                    md_content += f"  - **Result:** {check['result']}\n" 
+        try:
+            self.style.color_print(f'\n[+] Generating result report in MARKDOWN format...','white')
+            if not self.args.results_path.endswith('.md'):
+                file_name = self.args.results_path+'_privesc.md' if self.args.type == 'privilege' else self.args.results_path+'_sec.md'
+            else:
+                file_name = self.args.results_path
+            with open(file_name, 'w', encoding='UTF-8') as f:
+                f.write(md_content)
+            self.style.color_print(f'\n[+] Report created succesfully, saved in : {file_name}','green')
+        except PermissionError:
+            logging.error("\n[*] ERROR: Can not write the file, review filesystem permissions")
+            exit(1)
+            
 if __name__ == "__main__":
     Linguard()

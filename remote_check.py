@@ -5,13 +5,14 @@
 import threading
 import getpass
 import re
-import requests
 import logging
 from styles import Styles
 from tqdm import tqdm
 from nmap_scanner import NmapScanner
 from ssh_connector import SSHConnector
 from check_loader import CheckLoader
+from osint_check import OsintCheck
+from privesc_checks import PrivesChecks
 
 class RemoteCheck:
     def __init__(self, args):
@@ -23,10 +24,12 @@ class RemoteCheck:
         if self.check_type =='config':
             self.check_list = CheckLoader.load_checks('sec_checks.json')
             self.style.color_print('[+] Load checks -> [OK]','green')
+        else:
+            self.check_list = PrivesChecks().get_checks()
+            self.style.color_print('[+] Load Privilege escalation checks -> [OK]','green')
         self.password = getpass.getpass(f'\n[+] Introduce user {self.username} password: ')
         self.targets = self.load_targets()
         self.reachable_hosts = self.scan_hosts()
-        self.style.color_print('[+] Hosts port scan -> OK','green')
         self.results = []
 
     def load_targets(self):
@@ -42,6 +45,7 @@ class RemoteCheck:
                        
     def run_checks(self):
         threads = []
+        self.style.color_print('\n[+] Analyzing hosts...','white')
         for host in self.reachable_hosts:
             ssh_enabled = False
             for ports in host['ports']:
@@ -49,7 +53,7 @@ class RemoteCheck:
                     ssh_enabled = True
             if  ssh_enabled:
                 if len(threads) <= 3:
-                    thread = threading.Thread(target=self.run_checks_on_host, args=(host['ip'],))
+                    thread = threading.Thread(target=self.run_checks_on_host, args=(host['ip'],host['ports']))
                     thread.start()
                     threads.append(thread)
                     for thread in threads:
@@ -62,15 +66,16 @@ class RemoteCheck:
         nmap_scanner = NmapScanner(self.targets)
         return nmap_scanner.scan()
 
-    def run_checks_on_host(self, host):
+    def run_checks_on_host(self, host, ports):
         ssh = SSHConnector(host, self.username, self.key_path, self.password)
         if self.check_type == 'config':
-            self.run_config_checks(ssh)
+            self.run_config_checks(ssh,ports)
         elif self.check_type == 'privilege':
-            self.run_privilege_checks(ssh)
+            self.run_privilege_checks(ssh,ports)
 
-    def run_config_checks(self, ssh):
+    def run_config_checks(self, ssh, ports):
         check_results = []
+        passed = 0
         for check in tqdm(self.check_list,desc=f'Analyzing host: {ssh.get_ip()} ',ascii=' ░▒▓█'):
             command = check.get('command')
             valid_result = check.get('valid_result')
@@ -80,6 +85,7 @@ class RemoteCheck:
                 break
             else:
                 result = 'pass' if valid_result in output else 'fail'
+                passed = passed + 1 if result == 'pass' else passed
                 check_results.append({
                     'id': check.get('id'),
                     'description': check.get('description'),
@@ -88,39 +94,32 @@ class RemoteCheck:
                 })
         self.results.append({
         'ip': ssh.get_ip(),
+        'ports': ports,
+        'score': f'Passed {passed} of {len(self.check_list)}',
         'check_res': check_results    
         })
         ssh.close()
 
 
-    def run_privilege_checks(self, ssh):
+    def run_privilege_checks(self, ssh, ports):
         privesc_results = []
-        privesc_checks=[
-            {'id': 'sudo_check',
-             'command' : 'sudo -l',
-             'description': 'Review sudo configuration',
-             'remediation': 'Delete NOPASSWD configuration in sudoers file'
-            },
-            {'id': 'setuid_check',
-             'command' : 'find / -perm -4000 -type f 2>/dev/null',
-             'description': 'Find files with setuid enabled',
-             'remediation': 'Review and disable the unmnecesary setuid rights over the files'
-            },
-            {'id': 'kernel_check',
-             'command' : 'uname -r',
-             'description': 'Check kernel version',
-             'remediation': 'Upgrade kernel version to a not vulnerable version'
-            }
-        ]
+        privesc_checks= self.check_list
         for check in tqdm(privesc_checks,desc=f'Analyzing host: {ssh.get_ip()} ',ascii=' ░▒▓█'):
             if check['id'] == 'sudo_check':
                 output = ssh.execute_command(check['command'],True)
-                sudo_result = 'pass' if 'NOPASSWD' not in output else 'fail'
+                sudo_result = 'not vulnerable' if 'NOPASSWD' not in output else 'vulnerable'
+                sudo_users = []
+                if sudo_result == 'vulnerable':
+                    lines = output.split('\n')
+                    sudo_details = [line for line in lines if 'NOPASSWD' in line]
+                    for user in sudo_details:
+                        sudo_users.append(user.split()[0])     
                 privesc_results.append({
                     'id': check['id'],
                     'description': check['description'],
                     'remediation': check['remediation'],
-                    'result': sudo_result
+                    'result': sudo_result,
+                    'sudo_users': sudo_users
                 })
             if check['id'] == 'setuid_check':
                 valid_setuid_files =(
@@ -137,25 +136,29 @@ class RemoteCheck:
                     "/usr/bin/sudo")
                 not_valid_setuid_file = False
                 setuid_files_unvalid=[]
+                setuid_gtfobin = []
                 output = ssh.execute_command(check['command'])
                 setuid_files = output.splitlines()
                 for file in setuid_files:
                     if file not in valid_setuid_files:
                         not_valid_setuid_file = True
                         setuid_files_unvalid.append(file)
-                setuid_result = 'fail' if not_valid_setuid_file else 'pass'
+                        url_gtfobin = OsintCheck.check_gtfobins_exploits(file)
+                        if url_gtfobin != 'not_found':
+                            setuid_gtfobin.append(url_gtfobin)
+                setuid_result = 'vulnerable' if not_valid_setuid_file else 'not vulnerable'
                 privesc_results.append({
                     'id': check['id'],
                     'description': check['description'],
                     'remediation': check['remediation'],
                     'result': setuid_result,
-                    'details': setuid_files_unvalid
+                    'details': setuid_files_unvalid,
+                    'setuid_gtfobin': setuid_gtfobin
                 })
             if check['id'] == 'kernel_check':
                 output = ssh.execute_command(check['command'])
                 kernel_version = output.strip()
-                exploit_result, exploit_details = self.check_kernel_exploits(kernel_version)
-                kernel_result = 'pass' if 'NOPASSWD' not in output else 'fail'
+                exploit_result, exploit_details = OsintCheck.check_kernel_exploits(kernel_version)
                 privesc_results.append({
                     'id': check['id'],
                     'description': check['description'],
@@ -166,33 +169,9 @@ class RemoteCheck:
 
         self.results.append({
         'ip': ssh.get_ip(),
+        'ports': ports,
         'privesc_res': privesc_results
         })
-
-    def check_kernel_exploits(self, version):
-        version_parts = version.split('.')
-        major = version_parts[0]
-        minor = version_parts[1] if len(version_parts) > 1 else '0'
-        query_version = f"{major}.{minor}"
-        url = f"https://www.exploit-db.com/search?q=+{query_version}&type=local&platform=linux_x86-64" 
-        try:
-            response = requests.get(url)
-            if 'No results found' in response.text:
-                return 'pass', 'No known exploits found'
-            exploits = []
-            for line in response.text.splitlines():
-                if 'Privilege Escalation' in line:
-                    exploit_url = f"https://www.exploit-db.com{line.split('href=')[1].split('')[0]}"
-                    exploits.append(exploit_url)
-            
-            if exploits:
-                return 'fail', exploits
-            else:
-                return 'pass', 'No known privilege escalation exploits found'
-        
-        except requests.RequestException as e:
-            logging.error(f"Error checking exploits for kernel version {version}: {e}")
-            return 'fail', 'Error checking exploits'
 
     def get_results(self):
         return self.results

@@ -5,6 +5,7 @@
 import subprocess
 import logging
 import re
+from tqdm import tqdm
 
 class NmapScanner:
     def __init__(self, targets):
@@ -12,7 +13,7 @@ class NmapScanner:
 
     def scan(self):
         results = []
-        for target in self.targets:
+        for target in tqdm(self.targets,desc='Scanning hosts',ascii=' ░▒▓█'):
             scan_result = self.run_nmap(target)
             results.append({
                     'ip': target,
