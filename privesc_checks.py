@@ -20,7 +20,31 @@ class PrivesChecks:
              'remediation': 'Upgrade kernel version to a not vulnerable version'
             }
         ]
+        self.valid_setuid_files =(
+                    'passwd',
+                    'sudo',
+                    'chsh',
+                    'chfn',
+                    'newgrp',
+                    'gpasswd',
+                    'mount',
+                    'umount',
+                    'ping',
+                    'pppd',
+                    'su',
+                    'dbus-daemon-launch-helper',
+                    'ssh-keysign',
+                    'at',
+                    'fusermount',
+                    'pkexec',
+                    'polkit-agent-helper-1',
+                    'snap-confine',
+                    'nslogin',
+                    'fusermount3')
    
     def get_checks(self):
         return self.checks
+    
+    def get_valid_setuid_files(self):
+        return self.valid_setuid_files
     

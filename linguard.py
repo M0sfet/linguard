@@ -9,6 +9,7 @@ import logging
 import json
 import signal
 from styles import Styles
+from local_check import LocalCheck
 from remote_check import RemoteCheck
 from datetime import datetime
 
@@ -41,10 +42,17 @@ class Linguard:
         if args.mode == "remote" and (not args.targets or not args.SSHuser or not args.SSHkey):
             parser.error("--target, --SSHuser and --SSHkey are required if --mode is set to 'remote'")
             parser.print_usage()
-        if args.SSHuser.lower() == 'root':
-            parser.error("SSH connection using root user is not allowed")
+        if args.SSHuser:
+            if args.SSHuser.lower() == 'root':
+                parser.error("SSH connection using root user is not allowed")
+                parser.print_usage()
+            if len(args.SSHuser) > 20  or len(args.results_path) > 40:
+                parser.error("Argument too long")
+                parser.print_usage()
+        if args.mode == "local" and (args.targets or args.SSHuser or args.SSHkey):
+            parser.error("--target, --SSHuser and --SSHkey are not required if --mode is set to 'local'")
             parser.print_usage()
-        if len(args.SSHuser) > 20  or len(args.results_path) > 40:
+        if len(args.results_path) > 40:
             parser.error("Argument too long")
             parser.print_usage()
         return args
@@ -54,13 +62,18 @@ class Linguard:
         self.style.ascii_banner('LINGUARD')
         self.style.color_print('version: 1.0.0','yellow')
         self.style.color_print('Press ctrl-c to abort execution','yellow')
-        if self.args.mode == 'remote' and self.args.type == 'config':
+        if self.args.type == 'config':
             self.style.color_print('[+] Launching security check...','cyan')
-        if self.args.mode == 'remote' and self.args.type == 'privilege':
+        if self.args.type == 'privilege':
             self.style.color_print('[+] Launching privilege escalation check...','cyan')
-        remote_check = RemoteCheck(self.args)
-        remote_check.run_checks()
-        self.save_results(results = remote_check.get_results())
+        if self.args.mode == 'remote':
+            remote_check = RemoteCheck(self.args)
+            remote_check.run_checks()
+            self.save_results(results = remote_check.get_results())
+        if self.args.mode == 'local':
+            local_check = LocalCheck(self.args)
+            local_check.run_checks()
+            self.save_results(results = local_check.get_results())
 
     #Handle results
     def save_results(self, results):
@@ -87,12 +100,15 @@ class Linguard:
         md_content = "# LINGUARD Report.\n" 
         md_content += f"**Date:** {datetime.now().strftime('%d%m%Y')}\n"
         for result in results:
-            md_content += f"\n## IP: {result['ip']}\n"
+            if self.args.mode == 'remote':
+                md_content += f"\n## IP: {result['ip']}\n"
+                md_content += "\n### Ports and Services\n"
+                for port in result['ports']:
+                    md_content += f"- **Port:** {port['port']}, **Service:** {port['service']}, **Version:** {port['version']}\n"
+            else:
+                md_content += f"\n## HOSTNAME: {result['hostname']}\n"
             if self.args.type == 'config':
                 md_content += f"\n**Score:** {result['score']}\n"
-            md_content += "\n### Ports and Services\n"
-            for port in result['ports']:
-                md_content += f"- **Port:** {port['port']}, **Service:** {port['service']}, **Version:** {port['version']}\n"
             if self.args.type == 'config':
                 md_content += "\n### Security Configuration Check Results\n"
                 for check in result['check_res']:

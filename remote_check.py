@@ -5,9 +5,8 @@
 import threading
 import getpass
 import re
-import logging
-from styles import Styles
 from tqdm import tqdm
+from styles import Styles
 from nmap_scanner import NmapScanner
 from ssh_connector import SSHConnector
 from check_loader import CheckLoader
@@ -76,7 +75,7 @@ class RemoteCheck:
     def run_config_checks(self, ssh, ports):
         check_results = []
         passed = 0
-        for check in tqdm(self.check_list,desc=f'Analyzing host: {ssh.get_ip()} ',ascii=' ░▒▓█'):
+        for check in tqdm(self.check_list,desc=f'Analyzing host {ssh.get_ip()} ',ascii=' ░▒▓█'):
             command = check.get('command')
             valid_result = check.get('valid_result')
             output = ssh.execute_command(command,use_sudo=True)
@@ -104,7 +103,7 @@ class RemoteCheck:
     def run_privilege_checks(self, ssh, ports):
         privesc_results = []
         privesc_checks= self.check_list
-        for check in tqdm(privesc_checks,desc=f'Analyzing host: {ssh.get_ip()} ',ascii=' ░▒▓█'):
+        for check in tqdm(privesc_checks,desc=f'Analyzing host {ssh.get_ip()} ',ascii=' ░▒▓█'):
             if check['id'] == 'sudo_check':
                 output = ssh.execute_command(check['command'],True)
                 sudo_result = 'not vulnerable' if 'NOPASSWD' not in output else 'vulnerable'
@@ -122,30 +121,19 @@ class RemoteCheck:
                     'sudo_users': sudo_users
                 })
             if check['id'] == 'setuid_check':
-                valid_setuid_files =(
-                    "/usr/lib/dbus-1.0/dbus-daemon-launch-helper",
-                    "/usr/lib/openssh/ssh-keysign",
-                    "/usr/bin/gpasswd",
-                    "/usr/bin/mount",
-                    "/usr/bin/su",
-                    "/usr/bin/chsh",
-                    "/usr/bin/umount",
-                    "/usr/bin/newgrp",
-                    "/usr/bin/passwd",
-                    "/usr/bin/chfn",
-                    "/usr/bin/sudo")
+                valid_setuid_files = PrivesChecks().get_valid_setuid_files()
                 not_valid_setuid_file = False
                 setuid_files_unvalid=[]
                 setuid_gtfobin = []
                 output = ssh.execute_command(check['command'])
                 setuid_files = output.splitlines()
-                for file in setuid_files:
-                    if file not in valid_setuid_files:
-                        not_valid_setuid_file = True
-                        setuid_files_unvalid.append(file)
-                        url_gtfobin = OsintCheck.check_gtfobins_exploits(file)
-                        if url_gtfobin != 'not_found':
-                            setuid_gtfobin.append(url_gtfobin)
+                for setuid_file in setuid_files:
+                        if setuid_file.split('/')[-1] not in valid_setuid_files:
+                            not_valid_setuid_file = True
+                            setuid_files_unvalid.append(setuid_file)
+                            url_gtfobin = OsintCheck.check_gtfobins_exploits(setuid_file)
+                            if url_gtfobin != 'not_found':
+                                setuid_gtfobin.append(url_gtfobin)
                 setuid_result = 'vulnerable' if not_valid_setuid_file else 'not vulnerable'
                 privesc_results.append({
                     'id': check['id'],
