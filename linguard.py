@@ -37,7 +37,7 @@ class Linguard:
         parser.add_argument('-u','--SSHuser', help="User for connecting to remote hosts via SSH")
         parser.add_argument('-k','--SSHkey', help="Private key file for connecting to remote hosts via SSH")
         parser.add_argument('-o', '--output', choices=['json', 'markdown'], help="Output file format", default='json')
-        parser.add_argument('-r','--results_path', help="Path for results file, default: execution path/date_results",default=f'reports/{datetime.now().strftime("%d%m%Y")}_results')
+        parser.add_argument('-r','--results_path', help="Path for results file, default: execution reports/date_results",default=f'reports/{datetime.now().strftime("%d%m%Y")}_results')
         args = parser.parse_args()
         if args.mode == "remote" and (not args.targets or not args.SSHuser or not args.SSHkey):
             parser.error("--target, --SSHuser and --SSHkey are required if --mode is set to 'remote'")
