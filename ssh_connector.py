@@ -4,12 +4,12 @@
 #Import section
 import logging
 import paramiko
-import sys
+
 
 
 #Class
 class SSHConnector:
-    def __init__(self, ip, username, password=None, key_path=None):
+    def __init__(self, ip, username, key_path, password):
         self.ip = ip
         self.username = username.lower()
         self.password = password
@@ -20,39 +20,42 @@ class SSHConnector:
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            if self.username == 'root':
-                raise ValueError("SSH connection using root user is not allowed")
-                sys.exit(1)
-            if self.key_path:
-                key = paramiko.RSAKey.from_private_key_file(self.key_path)
-                client.connect(self.ip, username=self.username, pkey=key)
-            else:
-                client.connect(self.ip, username=self.username, password=self.password)
+            key = paramiko.RSAKey.from_private_key_file(self.key_path)
+            client.connect(self.ip, username=self.username, pkey=key)             
             return client
         except paramiko.AuthenticationException:
-            logging.error(f"Authentication failure when connecting to host: {self.ip}")
-            sys.exit(1)
+            logging.error(f"Authentication failure when connecting to host: {self.ip}\n")
+            exit(1)
         except paramiko.SSHException as ssh_connect_error:
-            logging.error(f"Connection error to host {self.ip}: {ssh_connect_error}")
-            sys.exit(1)
+            logging.error(f"Connection error to host {self.ip}: {ssh_connect_error}\n")
+            exit(1)
         except Exception as e:
-            logging.error(f"Unhandled exception: {e}")
-            sys.exit(1)
+            logging.error(f"Unhandled exception: {e}\n")
+            exit(1)
 
 
-    def execute_command(self, command):
+    def execute_command(self, command, use_sudo=False):
         try:
-            if self.password:
+            if use_sudo:
                 command = f'echo {self.password} | sudo -S {command}'
-                stdin, stdout, stderr = self.client.exec_command(command)
-                return stdout.read().decode()
+            stdin, stdout, stderr = self.client.exec_command(command)
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status != 0 and 'find / -perm -4000' not in command:
+                if 'incorrect password attempt' in stderr.read().decode():
+                    logging.error("\n[*] ERROR: Wrong password")
+                    return "command_exec_error"
+                return stderr.read().decode()
             else:
-                raise ValueError("User password is required for sudo command execution")
+               return stdout.read().decode()
         except paramiko.SSHException as ssh_execute_error:
-            logging.error(f"Command execution error of command: '{command}' in host {self.ip}: {ssh_execute_error}")
+            logging.error(f"Command execution error of command: '{command}' in host {self.ip}: {ssh_execute_error}\n")
             
         except Exception as e:
-            logging.error(f"Unhandled exception: {e}")
+            logging.error(f"Unhandled exception: {e}\n")
+            return "command_exec_error"
+
+    def get_ip(self):
+        return self.ip
      
     def close(self):
         self.client.close()

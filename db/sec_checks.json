@@ -1,0 +1,23 @@
+[
+    {
+        "id": 1,
+        "description": "Check if the FTP service is running",
+        "command": "service vsftpd status",
+        "valid_result": "FTP server is running",
+        "remediation": "Start the FTP service with the command service vsftpd start"
+    },
+    {
+        "id": 2,
+        "description": "Check if iptables is installed",
+        "command": "dpkg -s iptables",
+        "valid_result": "Status: install ok installed",
+        "remediation": "Install iptables package with command apt install iptables"
+    },
+    {
+        "id": 3,
+        "description": "Check disk space usage",
+        "command": "df / | awk 'NR==2 {if ($5+0 >= 100) print \"Filesystem full\"; else print \"Filesystem not full\";}'",
+        "valid_result": "Filesystem not full",
+        "remediation": "Free up disk space or expand the disk"
+    }
+]
