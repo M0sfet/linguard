@@ -37,6 +37,7 @@ class LocalCheck:
     def run_config_checks(self):
         check_results = []
         passed = 0
+        risk_score = 'LOW'
         try:
             for check in tqdm(self.check_list,desc=f'Analyzing host: {self.hostname} ',ascii=' ░▒▓█'):
                 command = f"echo {self.password} | sudo -S {check.get('command')}"
@@ -44,20 +45,31 @@ class LocalCheck:
                 output = subprocess.run(command, shell=True, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 if 'incorrect password attempt' in output.stderr:
                     logging.error("\n[*] ERROR: Wrong password")
-                    check_results = 'ERROR'
                     break
                 else:
-                    result = 'pass' if valid_result in output.stdout else 'fail'
+                    if valid_result == 'No output' and not output.stdout.strip():
+                        result ='pass'
+                    else:
+                        result = 'pass' if valid_result in output.stdout else 'fail'
                     passed = passed + 1 if result == 'pass' else passed
                     check_results.append({
                         'id': check.get('id'),
                         'description': check.get('description'),
                         'remediation': check.get('remediation'),
+                        'sec_standard': check.get('sec_standard'),
+                        'severity': check.get('severity'),
                         'result': result
                     })
+            for check in check_results:
+                if 'high' in check['severity'] and check['result'] == 'fail':
+                    risk_score = 'HIGH'
+                    break
+                if 'medium' in check['severity']and check['result'] == 'fail':
+                    risk_score = 'MEDIUM'
             self.results.append({
             'hostname': self.hostname,
             'score': f'Passed {passed} of {len(self.check_list)}',
+            'risk': risk_score,
             'check_res': check_results    
             })
         except OSError as e:

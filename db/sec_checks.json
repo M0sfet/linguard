@@ -1,23 +1,137 @@
 [
     {
         "id": 1,
-        "description": "Check if the FTP service is running",
-        "command": "service vsftpd status",
-        "valid_result": "FTP server is running",
-        "remediation": "Start the FTP service with the command service vsftpd start"
+        "description": "Verify that the SSH protocol is using version 2",
+        "command": "grep '^Protocol' /etc/ssh/sshd_config",
+        "valid_result": "Protocol 2",
+        "remediation": "Edit the SSH configuration file to enforce SSH protocol 2 by adding or modifying the line 'Protocol 2'.",
+        "sec_standard": "CIS Control 5.2.7 - Ensure SSH Protocol is set to 2",
+        "severity": "high"
     },
     {
         "id": 2,
-        "description": "Check if iptables is installed",
-        "command": "dpkg -s iptables",
-        "valid_result": "Status: install ok installed",
-        "remediation": "Install iptables package with command apt install iptables"
+        "description": "Check if the firewall is active",
+        "command": "ufw status",
+        "valid_result": "Status: active",
+        "remediation": "Activate the firewall using 'ufw enable'.",
+        "sec_standard": "CIS Control 9.1.1 - Ensure a firewall is enabled; PCI-DSS Requirement 1.1 - Install and maintain a firewall configuration to protect cardholder data",
+        "severity": "high"
     },
     {
         "id": 3,
-        "description": "Check disk space usage",
-        "command": "df / | awk 'NR==2 {if ($5+0 >= 100) print \"Filesystem full\"; else print \"Filesystem not full\";}'",
-        "valid_result": "Filesystem not full",
-        "remediation": "Free up disk space or expand the disk"
+        "description": "Ensure password expiration is configured",
+        "command": "grep PASS_MAX_DAYS /etc/login.defs",
+        "valid_result": "PASS_MAX_DAYS 90",
+        "remediation": "Set the maximum password age to 90 days by adding or modifying the line 'PASS_MAX_DAYS 90' in /etc/login.defs.",
+        "sec_standard": "CIS Control 5.4.1.1 - Ensure password expiration is 365 days or less; PCI-DSS Requirement 8.2.4 - Passwords/phrases must be changed at least once every 90 days",
+        "severity": "medium"
+    },
+    {
+        "id": 4,
+        "description": "Check if iptables firewall rules are configured",
+        "command": "iptables -L",
+        "valid_result": "Chain INPUT (policy DROP)",
+        "remediation": "Configure iptables with appropriate firewall rules to secure the system.",
+        "sec_standard": "CIS Control 9.2.1 - Ensure iptables is installed and configured; PCI-DSS Requirement 1.2 - Build firewall and router configurations that restrict connections between untrusted networks and any system components in the cardholder data environment.",
+        "severity": "high"
+    },
+    {
+        "id": 5,
+        "description": "Verify that the system has no empty passwords",
+        "command": "awk -F: '($2 == '') {print $1}' /etc/shadow",
+        "valid_result": "No output",
+        "remediation": "Set a strong password for all accounts without a password.",
+        "sec_standard": "CIS Control 5.4.1.4 - Ensure no empty passwords; PCI-DSS Requirement 8.2.6 - Review all user accounts to ensure that all users have a strong password set",
+        "severity": "high"
+    },
+    {
+        "id": 6,
+        "description": "Ensure root login is disabled over SSH",
+        "command": "grep '^PermitRootLogin' /etc/ssh/sshd_config",
+        "valid_result": "PermitRootLogin no",
+        "remediation": "Disable root login over SSH by setting 'PermitRootLogin no' in the SSH configuration.",
+        "sec_standard": "CIS Control 5.2.8 - Ensure SSH root login is disabled",
+        "severity": "high"
+    },
+    {
+        "id": 7,
+        "description": "Verify that audit logging is enabled",
+        "command": "service auditd status",
+        "valid_result": "active (running)",
+        "remediation": "Enable audit logging by installing and starting the auditd service.",
+        "sec_standard": "CIS Control 8.1.1 - Ensure auditd is installed; ISO 27001 A.12.4 - Logging and monitoring",
+        "severity": "medium"
+    },
+    {
+        "id": 8,
+        "description": "Ensure that password complexity requirements are enforced",
+        "command": "grep '^password.*pam_pwquality.so' /etc/pam.d/common-password",
+        "valid_result": "password requisite pam_pwquality.so retry=3",
+        "remediation": "Configure the PAM module 'pam_pwquality.so' in '/etc/pam.d/common-password' to enforce password complexity requirements, such as minimum length and the inclusion of uppercase, lowercase, numbers, and special characters.",
+        "sec_standard": "CIS Control 5.3.1 - Ensure password creation requirements are configured; PCI-DSS Requirement 8.2.3 - Implement and enforce password complexity requirements",
+        "severity": "medium"
+    },
+    {
+        "id": 9,
+        "description": "Ensure the system has no world-writable files",
+        "command": "df --local -P | awk {'if (NR!=1) print $6'} | xargs -I '{}' find '{}' -xdev -type f -perm -0002",
+        "valid_result": "No output",
+        "remediation": "Remove world-writable permissions from files identified by the command.",
+        "sec_standard": "CIS Control 1.1.1 - Ensure no world-writable files exist; PCI-DSS Requirement 6.4.3 - Ensure that only secure services, protocols, and daemons are enabled",
+        "severity": "medium"
+    },
+    {
+        "id": 10,
+        "description": "Check for the presence of unused user accounts",
+        "command": "lastlog -b 365",
+        "valid_result": "No output",
+        "remediation": "Disable or remove user accounts that have not been used in the last 365 days.",
+        "sec_standard": "CIS Control 5.4.4 - Ensure inactive accounts are disabled; PCI-DSS Requirement 8.1.4 - Remove/disable inactive user accounts within 90 days",
+        "severity": "low"
+    },
+    {
+        "id": 11,
+        "description": "Ensure password hashing algorithm is SHA-512",
+        "command": "authconfig --test | grep hashing",
+        "valid_result": "password hashing algorithm is sha512",
+        "remediation": "Configure the system to use SHA-512 by running 'authconfig --passalgo=sha512 --update'.",
+        "sec_standard": "CIS Control 5.3.2 - Ensure password hashing algorithm is SHA-512; PCI-DSS Requirement 8.2.1 - Passwords/phrases must be securely stored using strong cryptography",
+        "severity": "high"
+    },
+    {
+        "id": 12,
+        "description": "Verify that the file system is encrypted (Full Disk Encryption)",
+        "command": "lsblk -o NAME,MOUNTPOINT | grep crypt",
+        "valid_result": "crypt",
+        "remediation": "Implement full disk encryption (FDE) to protect data at rest.",
+        "sec_standard": "CIS Control 1.7.1.1 - Ensure that the system uses full disk encryption (FDE); PCI-DSS Requirement 3.4 - Render all data unreadable anywhere it is stored",
+        "severity": "high"
+    },
+    {
+        "id": 13,
+        "description": "Check if a system of endpoint protection (EDR) is installed",
+        "command": "systemctl list-units --type=service | grep -E 'crowdstrike|sentinel|carbonblack|falcon|mcafee|bitdefender'",
+        "valid_result": "Service related to an EDR is running",
+        "remediation": "Install and configure an appropriate EDR solution for the system.",
+        "sec_standard": "ISO 27001 A.12.6.2 - Protection against malware; PCI-DSS Requirement 5 - Use and regularly update antivirus software or programs",
+        "severity": "high"
+    },
+    {
+        "id": 14,
+        "description": "Ensure time synchronization is configured",
+        "command": "timedatectl status",
+        "valid_result": "NTP synchronized: yes",
+        "remediation": "Enable and configure NTP or another time synchronization service.",
+        "sec_standard": "CIS Control 6.1.2 - Ensure that the time synchronization service is running; ISO 27001 A.12.4.3 - Synchronize clocks of all relevant information processing systems within the organization",
+        "severity": "low"
+    },
+    {
+        "id": 15,
+        "description": "Verify that the system uses strong ciphers",
+        "command": "grep 'Ciphers' /etc/ssh/sshd_config",
+        "valid_result": "Ciphers aes256-ctr,aes192-ctr,aes128-ctr",
+        "remediation": "Configure the SSH server to use strong ciphers by updating the 'Ciphers' directive in /etc/ssh/sshd_config.",
+        "sec_standard": "CIS Control 5.2.12 - Ensure that strong ciphers are used; PCI-DSS Requirement 4.1 - Use strong cryptography and security protocols",
+        "severity": "high"
     }
 ]
