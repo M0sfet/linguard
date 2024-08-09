@@ -5,6 +5,7 @@
 import threading
 import getpass
 import re
+from os import _exit
 from tqdm import tqdm
 from styles import Styles
 from nmap_scanner import NmapScanner
@@ -75,29 +76,45 @@ class RemoteCheck:
     def run_config_checks(self, ssh, ports):
         check_results = []
         passed = 0
-        for check in tqdm(self.check_list,desc=f'Analyzing host {ssh.get_ip()} ',ascii=' ░▒▓█'):
-            command = check.get('command')
-            valid_result = check.get('valid_result')
-            output = ssh.execute_command(command,use_sudo=True)
-            if output == 'command_exec_error':
-                check_results = 'ERROR'
-                break
-            else:
-                result = 'pass' if valid_result in output else 'fail'
-                passed = passed + 1 if result == 'pass' else passed
-                check_results.append({
-                    'id': check.get('id'),
-                    'description': check.get('description'),
-                    'remediation': check.get('remediation'),
-                    'result': result
-                })
-        self.results.append({
-        'ip': ssh.get_ip(),
-        'ports': ports,
-        'score': f'Passed {passed} of {len(self.check_list)}',
-        'check_res': check_results    
-        })
-        ssh.close()
+        risk_score = 'LOW'
+        try:
+            for check in tqdm(self.check_list,desc=f'Analyzing host {ssh.get_ip()} ',ascii=' ░▒▓█'):
+                command = check.get('command')
+                valid_result = check.get('valid_result')
+                output = ssh.execute_command(command,use_sudo=True)
+                if output == 'command_exec_error':
+                    raise Exception("Command Execution Error")
+                else:
+                    if valid_result == 'No output' and not output.strip():
+                        result ='pass'
+                    else:
+                        result = 'pass' if valid_result in output else 'fail'
+                    passed = passed + 1 if result == 'pass' else passed
+                    check_results.append({
+                        'id': check.get('id'),
+                        'description': check.get('description'),
+                        'remediation': check.get('remediation'),
+                        'sec_standard': check.get('sec_standard'),
+                        'severity': check.get('severity'),
+                        'result': result
+                    })
+            for check in check_results:
+                if 'high' in check['severity'] and check['result'] == 'fail':
+                    risk_score = 'HIGH'
+                    break
+                if 'medium' in check['severity']and check['result'] == 'fail':
+                    risk_score = 'MEDIUM'
+            self.results.append({
+            'ip': ssh.get_ip(),
+            'ports': ports,
+            'score': f'Passed {passed} of {len(self.check_list)}',
+            'risk': risk_score,
+            'check_res': check_results    
+            })
+            ssh.close()
+        except Exception as e:
+            print(f'[*] ERROR: {e}')
+            _exit(1)
 
 
     def run_privilege_checks(self, ssh, ports):

@@ -23,7 +23,7 @@ class NmapScanner:
 
     def run_nmap(self, ip):
         try:
-            result = subprocess.run(['nmap', '-T4', '-F', '-sV', ip], capture_output=True, text=True)
+            result = subprocess.run(['nmap', '-Pn', '-T4', '-F', '-sV', ip], capture_output=True, text=True)
             if result.returncode != 0:
                 logging.error(f"Error nmap scan on host {ip}: {result.stderr}")
                 return []

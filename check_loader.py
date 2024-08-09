@@ -20,11 +20,13 @@ class InvalidCommand(Exception):
 
 def check_struct(json_file):
     json_template = {
-    "id": int,
-    "description": str,
-    "command": str,
-    "valid_result": str,
-    "remediation": str
+        "id": int,
+        "description": str,
+        "command": str,
+        "valid_result": str,
+        "remediation": str,
+        "sec_standard": str,
+        "severity": str
     } 
     for key, value_type in json_template.items():
         for check in json_file:
