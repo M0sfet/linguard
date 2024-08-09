@@ -28,7 +28,10 @@ class NmapScanner:
                 logging.error(f"Error nmap scan on host {ip}: {result.stderr}")
                 return []
             return self.parse_nmap_output(result.stdout)
-        except Exception as e:
+        except FileNotFoundError:
+            print("[*] NMAP is not installed in the system, please install and execute Linguard again.")
+            exit(1)
+        except subprocess.CalledProcessError as e:
             logging.error(f"Unhandled exception during the scan of host {ip}: {e}")
             exit(1)
 
