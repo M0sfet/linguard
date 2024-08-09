@@ -48,7 +48,7 @@ Once the mode have been specified it can run two type of checks:
 + config: Security checks specified in the file db/sec_checks.json
 + privilege: Potential privilege escalation paths ,currently supporting the following checks: 
     + Unsecure sudo privileges (NOPASSWD). 
-    + Abnormal setuid files present in the system, it will also check if there is an entry for that file in GTFObins, and if is that so it will save the link in the report.
+    + Abnormal setuid files present in the system, it will also check if there is an entry for that file in GTFObins (https://gtfobins.github.io/), and if is that so it will save the link in the report.
     + Vulnerable kernel version: It will check the presence of public esploits using exploit-db online database.
 
 Remote mode integrates with NMAP (https://nmap.org/) for port scanning validating the SSH service port i open and reachable, but it will also perform a service fingerprinting of the 100 most used TCP ports ans that information will be included in the report. 
