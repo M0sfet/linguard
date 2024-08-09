@@ -109,6 +109,8 @@ Analyzing host 172.17.0.4 : 100%|███████████████�
 End time: 09/08/2024 17:46:24
 ```
 
+## Security check database
+
 The security checks are fully customizable, for instance it will allow to create your own subset of checks mixing several controls from different infosec standards such as ISO 27001, PCI-DSS or technical guidelines such as CIS benchmark.Just need to edit the check db file sec_checks.json under db folder. You will find a sample file in this repository its structure must be followed to add or modify any check.
 Linguard will validate the file strcuture automatically upon start and also it will validate the commands specified in the checks to avoid the potential misuse of the tool.
 
@@ -135,6 +137,8 @@ Linguard will validate the file strcuture automatically upon start and also it w
 ]
 ```
 **Important note: In case the valid result output from the check command is empty please use the string  'No output' as value for the valid_result field in the check database.**
+
+## Reports
 
 The report could be generated in two flavours:
 
