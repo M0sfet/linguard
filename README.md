@@ -16,7 +16,7 @@ Once done install the needed libraries with the command:
 
 ```
 python3 linguard.py -h
-usage: linguard.py [-h] -m {local,remote} -t {config,privilege} [-l TARGETS] [-u SSHUSER] [-k SSHKEY] [-o {json,markdown}] [-r RESULTS_PATH]
+usage: linguard.py [-h] -m {local,remote} -t {config,privilege} [-l TARGETS] [-u SSHUSER] [-k SSHKEY] [-c CHECKS] [-o {json,markdown}] [-r RESULTS_PATH]
 
 Linguard - Security configuration analysis tool
 
@@ -32,6 +32,8 @@ options:
                         User for connecting to remote hosts via SSH (required if mode is remote)
   -k SSHKEY, --SSHkey SSHKEY
                         Private key file for connecting to remote hosts via SSH (required if mode is remote)
+  -c CHECKS, --checks CHECKS
+                        JSON file containing security checks to be performed, default: db/sec_checks.json
   -o {json,markdown}, --output {json,markdown}
                         Output file format
   -r RESULTS_PATH, --results_path RESULTS_PATH
@@ -66,7 +68,7 @@ if you don´t specify the desired format and path to save the report by default 
 
 ## Example
 
-Running a remote privilege check over 4 targets default report format would be JSON as wasn´t specified in the options.
+Running a remote privilege check over 4 targets, default security checks (sec_checks.json) will be used and  default report format would be JSON as markdown wasn´t specified in the options.
 
 ```
 python3 linguard.py -m remote -t config -l targets.txt -u test -k /home/m0sfet/.ssh/id_rsa
@@ -111,8 +113,11 @@ End time: 09/08/2024 17:46:24
 
 ## Security check database
 
-The security checks are fully customizable, for instance it will allow to create your own subset of checks mixing several controls from different infosec standards such as ISO 27001, PCI-DSS or technical guidelines such as CIS benchmark.Just need to edit the check db file sec_checks.json under db folder. You will find a sample file in this repository its structure must be followed to add or modify any check.
-Linguard will validate the file strcuture automatically upon start and also it will validate the commands specified in the checks to avoid the potential misuse of the tool.
+The security checks are fully customizable, for instance it will allow to create your own subset of checks mixing several controls from different infosec standards such as ISO 27001, PCI-DSS or technical guidelines such as CIS benchmark.Just need to create your own db file in JSON format following exactly the same structure of the default db file sec_checks.json under db folder and specifying the path to your file using option -c/--checks.
+
+Linguard will validate the file structure automatically upon start and also it will validate the commands specified in the checks to avoid the potential misuse of the tool.
+
+Linguard security checks file sample: 
 
 ```
 [
