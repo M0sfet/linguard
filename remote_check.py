@@ -22,7 +22,7 @@ class RemoteCheck:
         self.username = args.SSHuser
         self.key_path = args.SSHkey
         if self.check_type =='config':
-            self.check_list = CheckLoader.load_checks('sec_checks.json')
+            self.check_list = CheckLoader.load_checks(args.checks)
             self.style.color_print('[+] Load checks -> [OK]','green')
         else:
             self.check_list = PrivesChecks().get_checks()

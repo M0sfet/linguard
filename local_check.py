@@ -19,7 +19,7 @@ class LocalCheck:
         self.username = getpass.getuser()
         self.hostname = uname().nodename
         if self.check_type =='config':
-            self.check_list = CheckLoader.load_checks('sec_checks.json')
+            self.check_list = CheckLoader.load_checks(args.check)
             self.style.color_print('[+] Load checks -> [OK]','green')
         else:
             self.check_list = PrivesChecks().get_checks()

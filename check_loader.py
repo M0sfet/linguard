@@ -27,7 +27,7 @@ def check_struct(json_file):
         "remediation": str,
         "sec_standard": str,
         "severity": str
-    } 
+    }
     for key, value_type in json_template.items():
         for check in json_file:
             if key not in check.keys():
@@ -55,12 +55,21 @@ def check_security(json_file):
         'bash',
         'gobuster',
         'start',
-        'stop'
+        'stop',
+        'certutil',
+        'socat',
+        'chisel'
+        'ffuf',
+        'wfuzz',
+        'dirb',
+        'mount',
+        'rmdir'
     )
     for check in json_file:
         command = check['command']
         for invalid_command in invalid_commands:
             if invalid_command in command:
+                print(invalid_command)
                 raise InvalidCommand(f"Unsecure command: {command}")
     return True
 
@@ -68,15 +77,11 @@ class CheckLoader:
     @staticmethod
     def load_checks(file_name):
         try:
-            load_message = '[+] Loading check file...'
-            print(load_message)
+            print('[+] Loading check file...')
             struct = False
             security = False
-            db_path = os.path.join(os.path.dirname(__file__), 'db')
-            for file_name in os.listdir(db_path):
-                if file_name.endswith('.json'):
-                    with open(os.path.join(db_path, file_name), 'r') as file:
-                        checks =json.load(file)
+            with open(os.path.join(file_name), 'r', encoding='UTF-8') as file:
+                checks =json.load(file)
             struct = check_struct(checks)
             security = check_security(checks)
             if struct and security :
