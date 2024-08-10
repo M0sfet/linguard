@@ -7,7 +7,7 @@ Just clone the repository:
 
 Once done install the needed libraries with the command:
 
-    pip -r requirements.txt
+    pip install -r requirements.txt
 
 
 ## RUNNING LINGUARD
