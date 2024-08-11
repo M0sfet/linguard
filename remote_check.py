@@ -21,6 +21,7 @@ class RemoteCheck:
         self.check_type = args.type
         self.username = args.SSHuser
         self.key_path = args.SSHkey
+        self.max_threads = args.maxthreads
         if self.check_type =='config':
             self.check_list = CheckLoader.load_checks(args.checks)
             self.style.color_print('[+] Load checks -> [OK]','green')
@@ -52,7 +53,7 @@ class RemoteCheck:
                 if ports['port'] == 22:
                     ssh_enabled = True
             if  ssh_enabled:
-                if len(threads) <= 3:
+                if len(threads) <= self.max_threads:
                     thread = threading.Thread(target=self.run_checks_on_host, args=(host['ip'],host['ports']))
                     thread.start()
                     threads.append(thread)

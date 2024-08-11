@@ -37,6 +37,7 @@ class Linguard:
         parser.add_argument('-u','--SSHuser', help="User for connecting to remote hosts via SSH")
         parser.add_argument('-k','--SSHkey', help="Private key file for connecting to remote hosts via SSH")
         parser.add_argument('-c','--checks', help="JSON file containing security checks to be performed", default='db/sec_checks.json')
+        parser.add_argument('-mt','--maxthreads', type=int, help="Maximum number of threads for remote scan, default: 3", default=3)
         parser.add_argument('-o', '--output', choices=['json', 'markdown'], help="Output file format", default='json')
         parser.add_argument('-r','--results_path', help="Path for results file, default: execution reports/date_results",default=f'reports/{datetime.now().strftime("%d%m%Y")}_results')
         args = parser.parse_args()
