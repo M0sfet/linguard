@@ -16,7 +16,7 @@ Once done install the needed libraries with the command:
 
 ```
 python3 linguard.py -h
-usage: linguard.py [-h] -m {local,remote} -t {config,privilege} [-l TARGETS] [-u SSHUSER] [-k SSHKEY] [-c CHECKS] [-o {json,markdown}] [-r RESULTS_PATH]
+usage: linguard.py [-h] -m {local,remote} -t {config,privilege} [-l TARGETS] [-u SSHUSER] [-k SSHKEY] [-c CHECKS] [-mt MAXTHREADS] [-o {json,markdown}] [-r RESULTS_PATH]
 
 Linguard - Security configuration analysis tool
 
@@ -34,6 +34,8 @@ options:
                         Private key file for connecting to remote hosts via SSH (required if mode is remote)
   -c CHECKS, --checks CHECKS
                         JSON file containing security checks to be performed, default: db/sec_checks.json
+  -mt MAXTHREADS, --maxthreads MAXTHREADS
+                        Maximum number of threads for remote scan, default: 3
   -o {json,markdown}, --output {json,markdown}
                         Output file format
   -r RESULTS_PATH, --results_path RESULTS_PATH
@@ -68,7 +70,7 @@ if you don´t specify the desired format and path to save the report by default 
 
 ## Example
 
-Running a remote privilege check over 4 targets, default security checks (sec_checks.json) will be used and  default report format would be JSON as markdown wasn´t specified in the options.
+Running a remote privilege check over 4 targets, default security checks (sec_checks.json) will be used and default report format would be JSON as markdown wasn´t specified in the options.
 
 ```
 python3 linguard.py -m remote -t config -l targets.txt -u test -k /home/m0sfet/.ssh/id_rsa
