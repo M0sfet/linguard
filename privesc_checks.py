@@ -5,7 +5,7 @@ class PrivesChecks:
     def __init__(self):
         self.checks=[
             {'id': 'sudo_check',
-             'command' : 'cat /etc/sudoers',
+             'command' : 'cat /etc/sudoers | grep -v "^#"',
              'description': 'Review sudo configuration',
              'remediation': 'Delete NOPASSWD configuration in sudoers file'
             },
@@ -40,7 +40,11 @@ class PrivesChecks:
                     'polkit-agent-helper-1',
                     'snap-confine',
                     'nslogin',
-                    'fusermount3')
+                    'fusermount3',
+                    'pam_timestamp_check',
+                    'unix_chkpwd',
+                    'chage',
+                    'grub2-set-bootflag')
    
     def get_checks(self):
         return self.checks
