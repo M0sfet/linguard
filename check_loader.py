@@ -69,7 +69,6 @@ def check_security(json_file):
         command = check['command']
         for invalid_command in invalid_commands:
             if invalid_command in command:
-                print(invalid_command)
                 raise InvalidCommand(f"Unsecure command: {command}")
     return True
 
