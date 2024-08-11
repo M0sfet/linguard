@@ -17,9 +17,12 @@ class LocalCheck:
         self.style =Styles()
         self.check_type = args.type
         self.username = getpass.getuser()
+        if self.username =='root':
+            logging.error("Executing linguard with root user is not allowed")
+            exit(1)
         self.hostname = uname().nodename
         if self.check_type =='config':
-            self.check_list = CheckLoader.load_checks(args.check)
+            self.check_list = CheckLoader.load_checks(args.checks)
             self.style.color_print('[+] Load checks -> [OK]','green')
         else:
             self.check_list = PrivesChecks().get_checks()
